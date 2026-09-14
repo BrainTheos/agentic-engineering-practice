@@ -2,12 +2,13 @@
 
 ## File naming
 
-- Test files follow the naming convention `<resource>.test.js`, all lowercase (e.g. `tags.test.js`, `projects.test.js`).
-- See `CLAUDE.md` for the naming inconsistency already present in `tests/` (`userTest.js`, `test-projects.js`) — that's known debt, not a pattern to follow for new files.
+- Test files follow the naming convention `<resource>.test.js`, all lowercase (e.g. `tags.test.js`, `projects.test.js`, `users.test.js`).
+- `package.json`'s `jest.testMatch` is a single `**/tests/*.test.js` glob — every file in `tests/` follows this convention, so no special-casing is needed for new files.
 
 ## Tooling
 
-- Tests use Jest and supertest, run against an in-memory SQLite database (`DB.js` switches to `:memory:` when `NODE_ENV=test`).
+- Tests use Jest and supertest, run against an in-memory SQLite database (`src/db/connection.js` switches to `:memory:` when `NODE_ENV=test`).
+- Schema setup uses `createSchema` from `src/db/schema.js` — the same schema module the seed script uses — so tests never drift from the real DB schema.
 - No external setup is required — no separate test database, no fixtures to seed by hand beyond what a test creates itself.
 - The full suite must be runnable with `npm test` and nothing else.
 

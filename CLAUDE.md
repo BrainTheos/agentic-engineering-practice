@@ -12,8 +12,8 @@ Taskr API — a REST API for a task management service (users, projects, tasks, 
 npm install
 npm run db:seed     # create schema + seed sample data (5 users, 3 projects, 20 tasks, 15 comments, 8 tags)
 npm run db:reset     # delete taskr.db and reseed
-npm start            # run the server (port 3000, or $PORT)
-npm run dev          # run with --watch (Node 18+)
+npm start            # run the server (src/index.js, port 3000 or $PORT)
+npm run dev          # run src/index.js with --watch (Node 18+)
 npm test             # run the full Jest suite
 npm run test:watch   # watch mode
 ```
@@ -21,35 +21,45 @@ npm run test:watch   # watch mode
 Run a single test file: `npx jest tests/tasks.test.js`
 Run a single test by name: `npx jest -t "test name"`
 
-Note the `jest.testMatch` config in `package.json` explicitly lists `tests/userTest.js` and `tests/test-projects.js` in addition to the standard `**/tests/*.test.js` glob — those two files don't follow the `*.test.js` naming convention but are still part of the suite.
+Test files follow the `<resource>.test.js` naming convention (e.g. `tags.test.js`, `users.test.js`, `projects.test.js`). `package.json`'s `jest.testMatch` is a single `**/tests/*.test.js` glob — no special-cased filenames.
 
-New test files should follow the `<resource>.test.js` naming convention (e.g. `tags.test.js`). The current inconsistent naming in `tests/` (`userTest.js`, `test-projects.js`) is a known problem that will be standardized in a future cleanup — don't copy that naming for new files.
-
-Tests run against an in-memory SQLite database (`DB.js` uses `:memory:` when `NODE_ENV=test`), so no setup is needed beyond `npm install`.
+Tests run against an in-memory SQLite database (`src/db/connection.js` uses `:memory:` when `NODE_ENV=test`), so no setup is needed beyond `npm install`.
 
 ## Architecture
 
-**Request flow:** `index.js` (app setup, two inline routes, error handler) → `routes.js` (all resource routes) → either direct `db.prepare(...)` calls or a controller/helper module → `DB.js` (the single `better-sqlite3` connection).
+**Request flow:** `src/index.js` (app setup, middleware, router mounting) → `src/routes/<resource>-routes.js` (parses the request, calls a service, shapes the response, forwards errors via `next(err)`) → `src/services/<resource>-service.js` (validation, business rules, throws `Error` objects with a `.status` property on failure) → `src/db/queries/<resource>-queries.js` (the only place with `db.prepare(...)` calls) → `src/db/connection.js` (the single `better-sqlite3` connection).
 
-**This codebase is intentionally inconsistent** — it's a practice/training repo with real architectural debt baked in on purpose (see the TODO comments throughout), and that debt is slated to be addressed in a future refactor (repository layer, shared validation middleware, splitting `routes.js` per resource, etc. — see the TODOs at the top of `routes.js`). Until that refactor happens:
+This layering is strict and intentional:
 
-- Understand these patterns as known, tracked debt — not as the intended long-term design.
-- Don't reinforce them. When adding new routes or logic, don't copy the inline-`db.prepare`-in-route-handler style or duplicate inline validation just to "match the existing style" — prefer going through `UserController`-style separation, or flag the inconsistency instead of extending it.
-- Don't casually "clean up" one of these patterns as a drive-by inside an unrelated change either — a real refactor here is a deliberate, scoped task, not incidental to some other fix.
+- **Routes never touch the database.** No `db.prepare(...)` in `src/routes/`.
+- **Services never touch `req`/`res`.** They take plain arguments, return plain values, and throw `.status`-tagged `Error`s for the route to catch and pass to `next()`. `src/middleware/error-handler.js` is the one place that formats an error into an HTTP response.
+- **Queries are pure data access.** Each `src/db/queries/<resource>-queries.js` file owns the SQL for its resource; no validation or business logic there.
+- When adding new routes or logic, follow this chain — don't put `db.prepare` in a route handler or validation logic in a queries file, even to match a nearby example faster.
 
 Know these facts before making changes:
 
-- **No service/repository layer.** Most routes in `routes.js` query the database inline with `db.prepare(...)`. The **Users** resource is the exception — it delegates to `UserController.js`. Don't assume other resources follow the same pattern; check the specific route.
-- **Circular dependency between `routes.js` and `projectHelpers.js`.** `projectHelpers.js:formatProjectSummary` does a lazy `require('./routes')` inside the function body specifically to avoid a load-time circular import (`routes.js` requires `DB`/`UserController`/etc., and `projectHelpers` requires back into `routes` for `getTasksForProject`). If you touch either file, preserve the lazy require or the app will fail to boot.
-- **`misc/oldRoutes.js` and `misc/temp.js` are dead code** kept for reference/rollback — not wired into `index.js` or `routes.js`. Don't extend them; don't assume they run.
-- **`misc/constants.js`** also holds two helper functions (`formatError`, `paginate`) that arguably belong in `utils.js` — this is called out in a comment in that file, not a bug to silently "fix" as a drive-by.
-- **Auth is a placeholder.** `auth.js`'s `authenticate` middleware checks a static `x-api-key` header against `API_KEY`/`dev-key` — not real JWT/session auth. Only `DELETE /users/:id` and `DELETE /projects/:id` are gated by it; other mutating routes are unauthenticated.
-- **Email is stubbed.** `sendEmail.js` just logs and resolves — `UserController.createUser` calls it synchronously in the request path, so account creation is coupled to a "notification" concern that would normally be async/queued.
-- **Validation is inline per-route**, not centralized middleware — expect to see the same `isNonEmptyString`/`validateEmail` (from `utils.js`) checks repeated across handlers rather than a shared validator.
+- **Comments and task-tags are nested but independent resources.** `src/routes/comments-routes.js` (mounted at `/tasks/:id/comments`) and `src/routes/task-tags-routes.js` (mounted at `/tasks/:id/tags`) each use `express.Router({ mergeParams: true })` so they can read the parent task's `:id`. They are registered directly in `src/index.js`, same as every other route file.
+- **Auth is a placeholder.** `src/middleware/authenticate.js` checks a static `x-api-key` header against `API_KEY`/`dev-key` — not real JWT/session auth. Only `DELETE /users/:id` and `DELETE /projects/:id` are gated by it; `DELETE /tasks/:id` and other mutating routes are unauthenticated. This inconsistency is known and preserved, not a bug to silently fix as a drive-by.
+- **Email is stubbed.** `src/services/send-email.js` just logs and resolves — `users-service.js`'s `createUser` calls it synchronously in the request path, so account creation is coupled to a "notification" concern that would normally be async/queued.
+- **Error handling uses `next(err)`.** Route handlers wrap their service call in `try/catch` and call `next(err)` on failure — they never call `res.status(...)` directly for an error case. `src/middleware/error-handler.js` is the single place that reads `err.status`/`err.message` and formats the response.
+
+## Naming conventions
+
+All files under `src/` use kebab-case, suffixed by layer:
+
+| Layer | Pattern | Example |
+|---|---|---|
+| Routes | `<plural-resource>-routes.js` | `tasks-routes.js` |
+| Services | `<plural-resource>-service.js` | `tasks-service.js` |
+| Queries | `<plural-resource>-queries.js` | `tasks-queries.js` |
+| Tests | `<plural-resource>.test.js` | `tasks.test.js` |
+| Middleware | `<verb-noun>.js`, no resource stem | `error-handler.js`, `authenticate.js` |
+
+See `.claude/context/api-conventions.md` for the full convention with code examples.
 
 ## Data model
 
-SQLite tables (see `db/seed.js` for the schema): `users`, `projects` (owner_id → users), `tasks` (project_id → projects, assignee_id → users, status is `active`/`completed`/`archived`, enforced by both a CHECK constraint and `VALID_TASK_STATUSES` in `misc/constants.js`), `comments` (task_id, user_id), `tags`, `task_tags` (join table).
+SQLite tables (see `src/db/schema.js` for the DDL, shared by `src/db/seed.js` and the test suite): `users`, `projects` (owner_id → users), `tasks` (project_id → projects, assignee_id → users, status is `active`/`completed`/`archived`, enforced by both a CHECK constraint and `VALID_TASK_STATUSES` in `src/config.js`), `comments` (task_id, user_id), `tags`, `task_tags` (join table).
 
 ## Resources / base paths
 
@@ -68,6 +78,7 @@ SQLite tables (see `db/seed.js` for the schema): `users`, `projects` (owner_id �
 
 ## Never do these things
 
-- **Never add new route logic to `routes.js`.** It is already too large. Any new routes belong in a dedicated route file for that resource.
-- **Never add new utility functions to `utils.js`** without first checking whether they belong in a more specific module instead.
-- **Never import from `misc/oldRoutes.js` or `misc/temp.js`.** That code is dead and scheduled for removal.
+- **Never put `db.prepare(...)` calls in a route or service file.** Database access belongs only in `src/db/queries/<resource>-queries.js`.
+- **Never put validation or business logic in a route file.** Routes parse the request, call a service, shape the response, and forward errors via `next(err)` — nothing else.
+- **Never add new utility functions to `src/utils/helpers.js`** without first checking whether they belong in a more specific module instead.
+- **Never re-introduce a `misc/` directory or a monolithic `routes.js`.** Both were removed in the `src/` restructure; new code should extend the existing per-resource routes/services/queries files or add new ones following the same pattern.
