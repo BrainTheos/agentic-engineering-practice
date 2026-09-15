@@ -1,20 +1,20 @@
 {
   "permissions": {
     "allow": [
-      "npm test",
-      "npm run build",
-      "npm run dev",
-      "git status",
-      "git diff",
-      "git add",
-      "git commit",
-      "git push",
-      "gh pr create"
+      "Bash(npm test *)",
+      "Bash(npm run build *)",
+      "Bash(npm run dev *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh pr create *)"
     ],
     "deny": [
-      "rm -rf",
-      "curl",
-      "wget"
+      "Bash(rm -rf *)",
+      "Bash(curl *)",
+      "Bash(wget *)"
     ]
   }
 }
