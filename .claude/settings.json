@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "npm test",
+      "npm run build",
+      "npm run dev",
+      "git status",
+      "git diff",
+      "git add",
+      "git commit",
+      "git push",
+      "gh pr create"
+    ],
+    "deny": [
+      "rm -rf",
+      "curl",
+      "wget"
+    ]
+  }
+}
