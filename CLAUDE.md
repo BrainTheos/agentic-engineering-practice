@@ -25,6 +25,10 @@ Test files follow the `<resource>.test.js` naming convention (e.g. `tags.test.js
 
 Tests run against an in-memory SQLite database (`src/db/connection.js` uses `:memory:` when `NODE_ENV=test`), so no setup is needed beyond `npm install`.
 
+## Verification
+
+After completing any significant change, run `/verify-app` before committing. The suite uses supertest and covers all API endpoints, so a passing run confirms the full application is working correctly. Do not commit if any tests are failing — fix the implementation and re-run `/verify-app` until it passes.
+
 ## Architecture
 
 **Request flow:** `src/index.js` (app setup, middleware, router mounting) → `src/routes/<resource>-routes.js` (parses the request, calls a service, shapes the response, forwards errors via `next(err)`) → `src/services/<resource>-service.js` (validation, business rules, throws `Error` objects with a `.status` property on failure) → `src/db/queries/<resource>-queries.js` (the only place with `db.prepare(...)` calls) → `src/db/connection.js` (the single `better-sqlite3` connection).

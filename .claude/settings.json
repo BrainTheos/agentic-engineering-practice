@@ -16,5 +16,17 @@
       "Bash(curl *)",
       "Bash(wget *)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"$(date '+%Y-%m-%d %H:%M:%S') — files modified: $({ git diff --name-only; git ls-files --others --exclude-standard; } | tr '\n' ' ')\" >> .claude/hook.log"
+          }
+        ]
+      }
+    ]
   }
 }

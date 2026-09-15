@@ -2,3 +2,4 @@ node_modules/
 taskr.db
 taskr.db-shm
 taskr.db-wal
+.claude/hook.log
