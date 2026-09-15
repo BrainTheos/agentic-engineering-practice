@@ -1,5 +1,5 @@
 /**
- * Converts a date string to an ISO 8601 string.
+ * @description Converts a date string to an ISO 8601 string.
  * @param {string} dateStr - The date string to parse.
  * @returns {string|null} The ISO 8601 representation of the date, or `null` if `dateStr` is falsy or not a valid date.
  */
@@ -10,7 +10,7 @@ function formatDate(dateStr) {
 }
 
 /**
- * Converts a string into a URL-friendly slug (lowercase, hyphen-separated, non-word characters stripped).
+ * @description Converts a string into a URL-friendly slug (lowercase, hyphen-separated, non-word characters stripped).
  * @param {string} str - The string to slugify.
  * @returns {string} The slugified string.
  */
@@ -19,7 +19,7 @@ function slugify(str) {
 }
 
 /**
- * Truncates a string to a maximum length, appending an ellipsis when truncated.
+ * @description Truncates a string to a maximum length, appending an ellipsis when truncated.
  * @param {string} str - The string to truncate.
  * @param {number} len - The maximum length before truncation.
  * @returns {string} The original string if it is falsy or within `len`, otherwise the string truncated to `len` characters with `...` appended.
@@ -30,7 +30,7 @@ function truncate(str, len) {
 }
 
 /**
- * Checks whether a string is a syntactically valid email address.
+ * @description Checks whether a string is a syntactically valid email address.
  * @param {string} email - The email address to validate.
  * @returns {boolean} `true` if the string matches a basic email pattern, otherwise `false`.
  */
@@ -39,7 +39,7 @@ function validateEmail(email) {
 }
 
 /**
- * Checks whether a value is a string containing non-whitespace characters.
+ * @description Checks whether a value is a string containing non-whitespace characters.
  * @param {*} val - The value to check.
  * @returns {boolean} `true` if `val` is a string with non-whitespace content, otherwise `false`.
  */
@@ -48,7 +48,7 @@ function isNonEmptyString(val) {
 }
 
 /**
- * Builds a pagination metadata object from a total count and page parameters.
+ * @description Builds a pagination metadata object from a total count and page parameters.
  * @param {number} total - The total number of items across all pages.
  * @param {number} page - The current page number.
  * @param {number} pageSize - The number of items per page.
@@ -64,7 +64,7 @@ function buildPaginationMeta(total, page, pageSize) {
 }
 
 /**
- * Parses a value as an integer, falling back to a default when parsing fails.
+ * @description Parses a value as an integer, falling back to a default when parsing fails.
  * @param {*} val - The value to parse.
  * @param {*} fallback - The value to return if `val` cannot be parsed as an integer.
  * @returns {number|*} The parsed integer, or `fallback` if parsing produces `NaN`.
