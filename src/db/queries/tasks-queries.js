@@ -6,15 +6,21 @@ const { db } = require('../connection');
  * @param {string} [options.status] - If provided, restrict results to this status.
  * @param {number} [options.projectId] - If provided, restrict results to this project.
  * @param {number} [options.assigneeId] - If provided, restrict results to this assignee.
+ * @param {string} [options.tag] - If provided, restrict results to tasks with this tag name.
  * @param {number} [options.limit=20] - The maximum number of rows to return.
  * @param {number} [options.offset=0] - The number of rows to skip.
  * @returns {Object[]} The list of matching task rows, most recently created first.
  */
-function listTasks({ status, projectId, assigneeId, limit = 20, offset = 0 } = {}) {
-  let query = 'SELECT * FROM tasks';
+function listTasks({ status, projectId, assigneeId, tag, limit = 20, offset = 0 } = {}) {
+  let query = 'SELECT tasks.* FROM tasks';
   const conditions = [];
   const params = [];
 
+  if (tag) {
+    query += ' JOIN task_tags tt ON tt.task_id = tasks.id JOIN tags tg ON tg.id = tt.tag_id';
+    conditions.push('tg.name = ?');
+    params.push(tag);
+  }
   if (status) {
     conditions.push('status = ?');
     params.push(status);
@@ -30,7 +36,7 @@ function listTasks({ status, projectId, assigneeId, limit = 20, offset = 0 } = {
   if (conditions.length) {
     query += ' WHERE ' + conditions.join(' AND ');
   }
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  query += ' ORDER BY tasks.created_at DESC LIMIT ? OFFSET ?';
   params.push(limit, offset);
 
   return db.prepare(query).all(params);

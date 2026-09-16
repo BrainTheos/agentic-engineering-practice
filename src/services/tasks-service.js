@@ -10,12 +10,13 @@ const { VALID_TASK_STATUSES } = require('../config');
  * @param {string} [options.status] - If provided, restrict results to this status; must be a valid task status.
  * @param {number|string} [options.project_id] - If provided, restrict results to this project.
  * @param {number|string} [options.assignee_id] - If provided, restrict results to this assignee.
+ * @param {string} [options.tag] - If provided, restrict results to tasks with this tag (case-insensitive).
  * @param {number|string} [options.page] - The 1-based page number to return (defaults to 1).
  * @param {number|string} [options.page_size] - The number of items per page, capped at 100 (defaults to 20).
  * @returns {Object[]} The list of matching task rows.
  * @throws {Error} A 400 error if `status` is not a valid task status.
  */
-function listTasks({ status, project_id, assignee_id, page, page_size } = {}) {
+function listTasks({ status, project_id, assignee_id, tag, page, page_size } = {}) {
   if (status && !VALID_TASK_STATUSES.includes(status)) {
     const err = new Error(`status must be one of: ${VALID_TASK_STATUSES.join(', ')}`);
     err.status = 400;
@@ -29,6 +30,7 @@ function listTasks({ status, project_id, assignee_id, page, page_size } = {}) {
     status: status || undefined,
     projectId: project_id ? parseInt(project_id) : undefined,
     assigneeId: assignee_id ? parseInt(assignee_id) : undefined,
+    tag: tag ? tag.toLowerCase().trim() : undefined,
     limit,
     offset
   });
